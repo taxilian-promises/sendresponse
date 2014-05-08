@@ -1,0 +1,28 @@
+{
+  "name": "sendresponse",
+  "version": "1.0.0",
+  "description": "Promise-capable library for simple and consistent management of sending responses from a REST server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/taxilian-promises/sendresponse.git"
+  },
+  "keywords": [
+    "REST",
+    "express",
+    "node",
+    "sendresponse"
+  ],
+  "author": "Richard Bateman <taxilian@gmail.com>",
+  "license": "new BSD",
+  "bugs": {
+    "url": "https://github.com/taxilian-promises/sendresponse/issues"
+  },
+  "homepage": "https://github.com/taxilian-promises/sendresponse",
+  "dependencies": {
+    "q": "^1.0.1"
+  }
+}
