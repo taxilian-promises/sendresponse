@@ -105,6 +105,7 @@ function sendResponse(res, promise, code) {
 
 sendResponse.middleware = function(req, res, next) {
     res.sendResponse = sendResponse.bind(sendResponse, res);
+    next();
 };
 sendResponse.registerTranslator = function(fn) {
     errorTranslators.push(fn);
