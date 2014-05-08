@@ -1,4 +1,4 @@
-var Q = require('Q');
+var Q = require('q');
 Q.longStackSupport = true;
 
 function UnauthenticatedError(message) {
@@ -42,8 +42,9 @@ function sendErrorResponse(err, res) {
     if (err.toResponseObject) {
         obj = err.toResponseObject();
     } else {
-        for (var i = 0; i < errorTranslators; ++i) {
-            obj = errorTranslators(err);
+        console.log("Checking error translators: ", errorTranslators);
+        for (var i = 0; i < errorTranslators.length; ++i) {
+            obj = errorTranslators[i](err);
             if (obj) { break; }
         }
     }
@@ -54,20 +55,7 @@ function sendErrorResponse(err, res) {
         }
         obj = {"type":"UnknownError","data":[err.toString()],"code":500};
     }
-    json = JSON.stringify(obj);
-    res.send(json, obj.code || 500);
-
-    /*
-     *else if(err.hasOwnProperty('name') && (err.name === 'MongoError' ||
-     *                                         err.name === 'ValidationError' || err.name === 'CastError')) {
-     *    var merr = mongoError(err);
-     *    res.send(JSON.stringify(merr.result), merr.code);
-     *} else {
-     *    console.log("Unknown error!", err);
-     *    json = JSON.stringify();
-     *    res.send(json, 500);
-     *}
-     */
+    res.json(obj, obj.code || 500);
 }
 
 function sendResponse(res, promise, code) {
@@ -81,8 +69,8 @@ function sendResponse(res, promise, code) {
         } else if(result) {
             res.json(result, code || 200);
         } else {
-            var json = JSON.stringify({"type":"ObjectNotFound","data":[],"code":404});
-            res.send(json, 404);
+            var obj = {"type":"ObjectNotFound","data":[],"code":404};
+            res.json(obj, 404);
         }
     }, function(err) {
         var merr = null, json = null;
@@ -97,8 +85,8 @@ function sendResponse(res, promise, code) {
             });
             console.trace();
             console.error("sendresponse stack: ", responseStack);
-            json = JSON.stringify({"type":"InternalServerError","data":[],"code":500});
-            res.send(json, 500);
+            var obj = {"type":"InternalServerError","data":[],"code":500};
+            res.json(obj, 500);
         }
     });
 }
