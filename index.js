@@ -42,7 +42,6 @@ function sendErrorResponse(err, res) {
     if (err.toResponseObject) {
         obj = err.toResponseObject();
     } else {
-        console.log("Checking error translators: ", errorTranslators);
         for (var i = 0; i < errorTranslators.length; ++i) {
             obj = errorTranslators[i](err);
             if (obj) { break; }
@@ -51,7 +50,7 @@ function sendErrorResponse(err, res) {
 
     if (!obj) {
         if (verboseConsoleErrors) {
-            console.error("Unknown error!", err);
+            console.error("Unknown error!", err, err.stack);
         }
         obj = {"type":"UnknownError","data":[err.toString()],"code":500};
     }
