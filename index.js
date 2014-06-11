@@ -42,9 +42,13 @@ function sendErrorResponse(err, res) {
     if (err.toResponseObject) {
         obj = err.toResponseObject();
     } else {
-        for (var i = 0; i < errorTranslators.length; ++i) {
-            obj = errorTranslators[i](err);
-            if (obj) { break; }
+        try {
+            for (var i = 0; i < errorTranslators.length; ++i) {
+                obj = errorTranslators[i](err);
+                if (obj) { break; }
+            }
+        } catch(err2) {
+            console.warn("Error trying to handle error with error translator: ", err2, err2.stack);
         }
     }
 
@@ -54,6 +58,7 @@ function sendErrorResponse(err, res) {
         }
         obj = {"type":"UnknownError","data":[err.toString()],"code":500};
     }
+    console.log("Error response: ", obj);
     res.json(obj, obj.code || 500);
 }
 
