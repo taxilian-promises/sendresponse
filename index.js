@@ -84,7 +84,7 @@ function sendResponse(res, promise, code) {
             sendErrorResponse(err, res);
         } else {
             console.error("Internal Server Error -- Promise reject with: ");
-            arguments.forEach(function(a) {
+            Array.prototype.forEach.call(arguments, function(a) {
                 console.log(a);
             });
             console.trace();
