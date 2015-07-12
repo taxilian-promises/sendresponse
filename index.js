@@ -82,11 +82,13 @@ function sendResponse(res, promise, code) {
         // 403's as a result of being not authorized vs. not authenticated
         if(err instanceof Error) {
             sendErrorResponse(err, res);
+            if (verboseConsoleErrors) {
+                console.error("sendResponse called with error:", err, err.stack);
+                console.trace();
+                console.error("sendresponse stack: ", responseStack);
+            }
         } else {
-            console.error("Internal Server Error -- Promise reject with: ");
-            Array.prototype.forEach.call(arguments, function(a) {
-                console.log(a);
-            });
+            console.error("Internal Server Error -- Promise reject with: ", err);
             console.trace();
             console.error("sendresponse stack: ", responseStack);
             var obj = {"type":"InternalServerError","data":[],"code":500};
