@@ -92,7 +92,7 @@ function sendResponse(res, promise, code) {
             var obj = {"type":"InternalServerError","data":[],"code":500};
             res.json(obj, 500);
         }
-    });
+    }).done();
 }
 
 sendResponse.middleware = function(req, res, next) {
