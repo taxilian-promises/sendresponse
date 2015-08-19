@@ -1,5 +1,7 @@
 var Q = require('q');
 
+var Promisify = Q;
+
 function UnauthenticatedError(message) {
     this.message = message;
 }
@@ -66,7 +68,7 @@ function sendResponse(res, promise, code) {
         throw new Error("First parameter must be the response object!");
     }
     var responseStack = new Error().stack;
-    Q.when(promise).then(function(result) {
+    var out = Promisify(promise).then(function(result) {
         if(result instanceof Error) {
             sendErrorResponse(result, res);
         } else if(result) {
@@ -93,7 +95,8 @@ function sendResponse(res, promise, code) {
             var obj = {"type":"InternalServerError","data":[],"code":500};
             res.json(obj, 500);
         }
-    }).done();
+    });
+    if (out.done) { out.done(); }
 }
 
 sendResponse.middleware = function(req, res, next) {
@@ -104,6 +107,13 @@ sendResponse.registerTranslator = function(fn) {
     errorTranslators.push(fn);
 };
 sendResponse.setVerboseLogs = function() { verboseConsoleErrors = true; };
+sendResponse.setPromiseFactory = function(fn) {
+    // This should be a function which accepts a value which may or may not be
+    // a Promises/A+ object and returns a Promises/A+ object.  If the return object
+    // has a done() method that will be invoked with no parameters at the end; Q and Bluebird
+    // both support this as a way to ensure that there are no swallowed uncaught exceptions
+    Promisify = fn;
+};
 
 sendResponse.UnauthenticatedError = UnauthenticatedError;
 sendResponse.ForbiddenError = ForbiddenError;
