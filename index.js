@@ -1,5 +1,4 @@
 var Q = require('q');
-Q.longStackSupport = true;
 
 function UnauthenticatedError(message) {
     this.message = message;
