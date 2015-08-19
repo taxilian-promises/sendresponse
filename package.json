@@ -1,6 +1,6 @@
 {
   "name": "sendresponse",
-  "version": "1.0.8",
+  "version": "1.1.0",
   "description": "Promise-capable library for simple and consistent management of sending responses from a REST server",
   "main": "index.js",
   "scripts": {
