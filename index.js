@@ -34,6 +34,7 @@ function sendErrorResponse(err, res) {
     }
     console.log("Error response: ", obj);
     res.json(obj, obj.code || 500);
+    res.send(obj.code || 500, obj);
 }
 
 function sendResponse(res, promise, code) {
@@ -44,8 +45,8 @@ function sendResponse(res, promise, code) {
     var out = Promisify(promise).then(function(result) {
         if(result instanceof Error) {
             sendErrorResponse(result, res);
-        } else if(result) {
-            res.json(result, code || 200);
+        } else if (result || result === '') {
+            res.send(code || 200, result);
         } else {
             res.send(404, sendResponse.NotFound);
         }
