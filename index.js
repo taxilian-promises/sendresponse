@@ -41,7 +41,7 @@ function sendResponse(res, promise, code) {
     if (!res.json) {
         throw new Error("First parameter must be the response object!");
     }
-    var responseStack = new Error().stack;
+    var responseStack = new Error();
     var out = Promisify(promise).then(function(result) {
         if(result instanceof Error) {
             sendErrorResponse(result, res);
