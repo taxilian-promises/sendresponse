@@ -22,24 +22,22 @@ function sendErrorResponse(err, res) {
                 if (obj) { break; }
             }
         } catch(err2) {
-            console.warn("Error trying to handle error with error translator: ", err2, err2.stack);
+            console.warn('Error trying to handle error with error translator:', err2, err2.stack);
         }
     }
-
     if (!obj) {
         if (verboseConsoleErrors) {
-            console.error("Unknown error!", err, err.stack);
+            console.error('Unknown error!', err, err.stack);
         }
         obj = new sendResponse.UnknownError(err.toString());
     }
-    console.log("Error response: ", obj);
-    res.json(obj, obj.code || 500);
+    console.warn('Error response:', obj);
     res.send(obj.code || 500, obj);
 }
 
 function sendResponse(res, promise, code) {
     if (!res.json) {
-        throw new Error("First parameter must be the response object!");
+        throw new Error('First parameter must be the response object!');
     }
     var responseStack = new Error();
     var out = Promisify(promise).then(function(result) {
@@ -51,22 +49,17 @@ function sendResponse(res, promise, code) {
             res.send(404, sendResponse.NotFound);
         }
     }, function(err) {
-        var merr = null, json = null;
-        // ForbiddenError and UnauthenticatedError are used to distinguish between
-        // 403's as a result of being not authorized vs. not authenticated
         if(err instanceof Error) {
             sendErrorResponse(err, res);
             if (verboseConsoleErrors) {
-                console.error("sendResponse called with error:", err, err.stack);
+                console.error('sendResponse called with error:', err, err.stack);
                 console.trace();
-                console.error("sendresponse stack: ", responseStack);
+                console.error('sendresponse stack:', responseStack.stack);
             }
         } else {
-            console.error("Internal Server Error -- Promise reject with: ", err);
+            console.error('Internal Server Error -- Promise reject with:', err);
             console.trace();
-            console.error("sendresponse stack: ", responseStack);
-            var obj = {"type":"InternalServerError","data":[],"code":500};
-            res.json(obj, 500);
+            console.error('sendresponse stack:', responseStack.stack);
             res.send(500, new sendResponse.InternalServerError());
         }
     });
