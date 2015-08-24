@@ -44,10 +44,10 @@ function sendResponse(res, promise, code) {
     var out = Promisify(promise).then(function(result) {
         if(result instanceof Error) {
             sendErrorResponse(result, res);
-        } else if (result || result === '') {
-            res.send(code || 200, result);
-        } else {
+        } else if (result === void(0) || result === null) {
             res.send(404, sendResponse.NotFound);
+        } else {
+            res.send(code || 200, result);
         }
     }, function(err) {
         if(err instanceof Error) {
