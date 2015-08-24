@@ -23,6 +23,7 @@
   },
   "homepage": "https://github.com/taxilian-promises/sendresponse",
   "dependencies": {
+    "apperror": "^1.1.2",
     "q": "=1.4.1"
   }
 }

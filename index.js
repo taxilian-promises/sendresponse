@@ -1,46 +1,20 @@
 var Q = require('q');
+var AppError = require('apperror');
 
 var Promisify = Q;
 
-function UnauthenticatedError(message) {
-    this.message = message;
-}
-UnauthenticatedError.prototype = new Error();
-UnauthenticatedError.prototype.constructor = UnauthenticatedError;
-UnauthenticatedError.prototype.name = 'UnauthenticatedError';
-UnauthenticatedError.prototype.toString = function() { return this.message; };
-UnauthenticatedError.prototype.toResponseObject = function() {
-    return {"type":"UnauthenticatedError","data":[this.toString()], "code": 403};
-};
-
-function ForbiddenError(message) {
-    this.message = message;
-}
-ForbiddenError.prototype = new Error();
-ForbiddenError.prototype.constructor = ForbiddenError;
-ForbiddenError.prototype.name = 'ForbiddenError';
-ForbiddenError.prototype.toString = function() { return this.message; };
-ForbiddenError.prototype.toResponseObject = function() {
-    return {"type":"ForbiddenError","data":[this.toString()], "code": 403};
-};
-
-function ValidationError(message) {
-    this.message = message;
-}
-ValidationError.prototype = new Error();
-ValidationError.prototype.constructor = ValidationError;
-ValidationError.prototype.name = 'ValidationError';
-ValidationError.prototype.toString = function() { return this.message; };
-ValidationError.prototype.toResponseObject = function() {
-    return {"type":"ValidationError","data":[this.toString()], "code": 400};
-};
+module.exports = sendResponse;
 
 var verboseConsoleErrors = false;
+var legacyErrorFormat = false;
 var errorTranslators = [];
 
 function sendErrorResponse(err, res) {
-    var json, obj;
-    if (err.toResponseObject) {
+    var obj;
+    if (err instanceof AppError) {
+        err.log();
+        return res.send(err.code, legacyErrorFormat && toLegacyFormat(err) || err);
+    } else if (err.toResponseObject) {
         obj = err.toResponseObject();
     } else {
         try {
@@ -49,51 +23,45 @@ function sendErrorResponse(err, res) {
                 if (obj) { break; }
             }
         } catch(err2) {
-            console.warn("Error trying to handle error with error translator: ", err2, err2.stack);
+            console.warn('Error trying to handle error with error translator:', err2, err2.stack);
         }
     }
-
     if (!obj) {
         if (verboseConsoleErrors) {
-            console.error("Unknown error!", err, err.stack);
+            console.error('Unknown error!', err, err.stack);
         }
-        obj = {"type":"UnknownError","data":[err.toString()],"code":500};
+        obj = new sendResponse.UnknownError(err.toString());
     }
-    console.log("Error response: ", obj);
-    res.json(obj, obj.code || 500);
+    console.warn('Error response:', obj);
+    res.send(obj.code || 500, obj);
 }
 
 function sendResponse(res, promise, code) {
     if (!res.json) {
-        throw new Error("First parameter must be the response object!");
+        throw new Error('First parameter must be the response object!');
     }
-    var responseStack = new Error().stack;
+    var responseStack = new Error();
     var out = Promisify(promise).then(function(result) {
         if(result instanceof Error) {
             sendErrorResponse(result, res);
-        } else if(result) {
-            res.json(result, code || 200);
+        } else if (result || result === '') {
+            res.send(code || 200, result);
         } else {
-            var obj = {"type":"ObjectNotFound","data":[],"code":404};
-            res.json(obj, 404);
+            res.send(404, sendResponse.NotFound);
         }
     }, function(err) {
-        var merr = null, json = null;
-        // ForbiddenError and UnauthenticatedError are used to distinguish between
-        // 403's as a result of being not authorized vs. not authenticated
         if(err instanceof Error) {
             sendErrorResponse(err, res);
-            if (verboseConsoleErrors) {
-                console.error("sendResponse called with error:", err, err.stack);
+            if (verboseConsoleErrors && !(err instanceof AppError && !err.captureStack)) {
+                console.error('sendResponse called with error:', err, err.stack);
                 console.trace();
-                console.error("sendresponse stack: ", responseStack);
+                console.error('sendresponse stack:', responseStack.stack);
             }
         } else {
-            console.error("Internal Server Error -- Promise reject with: ", err);
+            console.error('Internal Server Error -- Promise reject with:', err);
             console.trace();
-            console.error("sendresponse stack: ", responseStack);
-            var obj = {"type":"InternalServerError","data":[],"code":500};
-            res.json(obj, 500);
+            console.error('sendresponse stack:', responseStack.stack);
+            res.send(500, new sendResponse.InternalServerError());
         }
     });
     if (out.done) { out.done(); }
@@ -107,6 +75,7 @@ sendResponse.registerTranslator = function(fn) {
     errorTranslators.push(fn);
 };
 sendResponse.setVerboseLogs = function() { verboseConsoleErrors = true; };
+sendResponse.setLegacyErrorFormat = function setLegacyErrorFormat() { legacyErrorFormat = true; };
 sendResponse.setPromiseFactory = function(fn) {
     // This should be a function which accepts a value which may or may not be
     // a Promises/A+ object and returns a Promises/A+ object.  If the return object
@@ -115,8 +84,37 @@ sendResponse.setPromiseFactory = function(fn) {
     Promisify = fn;
 };
 
-sendResponse.UnauthenticatedError = UnauthenticatedError;
-sendResponse.ForbiddenError = ForbiddenError;
-sendResponse.ValidationError = ValidationError;
+function toLegacyFormat(err) {
+    var obj = err.toJSON();
+    var data = [obj.message];
+    if (obj.data) { data.push(obj.data); }
+    return {
+        type: obj.type,
+        data: data,
+        code: obj.code,
+    };
+}
 
-module.exports = sendResponse;
+// ForbiddenError and UnauthenticatedError are used to distinguish between
+// 403's as a result of being not authorized vs. not authenticated
+sendResponse.UnauthenticatedError = AppError.createCustom(
+    'UnauthenticatedError', {msg: 'Authentication Required', code: 403, captureStack: false}
+);
+sendResponse.ForbiddenError = AppError.createCustom(
+    'ForbiddenError', {msg: 'Forbidden', code: 403, captureStack: false}
+);
+sendResponse.ValidationError = AppError.createCustom(
+    'ValidationError', {msg: 'ValidationError', code: 400, captureStack: false}
+);
+sendResponse.UnknownError = AppError.createCustom(
+    'UnknownError', {msg: 'Unknown Error'}
+);
+sendResponse.InternalServerError = AppError.createCustom(
+    'InternalServerError', {msg: 'Internal Server Error'}
+);
+
+// Export an instance of an object which represents NotFound
+sendResponse.NotFound = new (AppError.createCustom(
+    'NotFound', {msg: 'NotFound', code: 404, captureStack: false}
+))();
+sendResponse.createCustomError = AppError.createCustom;
