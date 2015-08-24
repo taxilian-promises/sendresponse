@@ -51,7 +51,7 @@ function sendResponse(res, promise, code) {
     }, function(err) {
         if(err instanceof Error) {
             sendErrorResponse(err, res);
-            if (verboseConsoleErrors) {
+            if (verboseConsoleErrors && !(err instanceof AppError && !err.captureStack)) {
                 console.error('sendResponse called with error:', err, err.stack);
                 console.trace();
                 console.error('sendresponse stack:', responseStack.stack);
