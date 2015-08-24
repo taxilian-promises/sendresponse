@@ -6,13 +6,14 @@ var Promisify = Q;
 module.exports = sendResponse;
 
 var verboseConsoleErrors = false;
+var legacyErrorFormat = false;
 var errorTranslators = [];
 
 function sendErrorResponse(err, res) {
     var obj;
     if (err instanceof AppError) {
         err.log();
-        return res.send(err.code, err);
+        return res.send(err.code, legacyErrorFormat && toLegacyFormat(err) || err);
     } else if (err.toResponseObject) {
         obj = err.toResponseObject();
     } else {
@@ -74,6 +75,7 @@ sendResponse.registerTranslator = function(fn) {
     errorTranslators.push(fn);
 };
 sendResponse.setVerboseLogs = function() { verboseConsoleErrors = true; };
+sendResponse.setLegacyErrorFormat = function setLegacyErrorFormat() { legacyErrorFormat = true; };
 sendResponse.setPromiseFactory = function(fn) {
     // This should be a function which accepts a value which may or may not be
     // a Promises/A+ object and returns a Promises/A+ object.  If the return object
@@ -81,6 +83,17 @@ sendResponse.setPromiseFactory = function(fn) {
     // both support this as a way to ensure that there are no swallowed uncaught exceptions
     Promisify = fn;
 };
+
+function toLegacyFormat(err) {
+    var obj = err.toJSON();
+    var data = [obj.message];
+    if (obj.data) { data.push(obj.data); }
+    return {
+        type: obj.type,
+        data: data,
+        code: obj.code,
+    };
+}
 
 // ForbiddenError and UnauthenticatedError are used to distinguish between
 // 403's as a result of being not authorized vs. not authenticated
