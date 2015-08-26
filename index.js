@@ -41,15 +41,17 @@ function sendResponse(res, promise, code) {
         throw new Error('First parameter must be the response object!');
     }
     var responseStack = new Error();
+    var NotFound = sendResponse.NotFound;
     var out = Promisify(promise).then(function(result) {
         if(result instanceof Error) {
             sendErrorResponse(result, res);
         } else if (result === void(0) || result === null) {
-            res.send(404, sendResponse.NotFound);
+            res.send(404, legacyErrorFormat && toLegacyFormat(NotFound) || NotFound);
         } else {
             res.send(code || 200, result);
         }
     }, function(err) {
+        var ise;
         if(err instanceof Error) {
             sendErrorResponse(err, res);
             if (verboseConsoleErrors && !(err instanceof AppError && !err.captureStack)) {
@@ -61,7 +63,8 @@ function sendResponse(res, promise, code) {
             console.error('Internal Server Error -- Promise reject with:', err);
             console.trace();
             console.error('sendresponse stack:', responseStack.stack);
-            res.send(500, new sendResponse.InternalServerError());
+            ise = new sendResponse.InternalServerError();
+            res.send(500, legacyErrorFormat && toLegacyFormat(ise) || ise);
         }
     });
     if (out.done) { out.done(); }
