@@ -115,7 +115,9 @@ sendResponse.UnknownError = AppError.createCustom(
 sendResponse.InternalServerError = AppError.createCustom(
     'InternalServerError', {msg: 'Internal Server Error'}
 );
-
+sendResponse.InvalidRequestError = AppError.createCustom(
+    'InvalidRequestError', {msg: 'Invalid request', code: 400}
+);
 // Export an instance of an object which represents NotFound
 sendResponse.NotFound = new (AppError.createCustom(
     'NotFound', {msg: 'NotFound', code: 404, captureStack: false}
