@@ -13,7 +13,7 @@ function sendErrorResponse(err, res) {
     var obj;
     if (err instanceof AppError) {
         err.log();
-        return res.send(err.code, legacyErrorFormat && toLegacyFormat(err) || err);
+        return res.status(err.code).send(legacyErrorFormat && toLegacyFormat(err) || err);
     } else if (err.toResponseObject) {
         obj = err.toResponseObject();
     } else {
@@ -33,7 +33,7 @@ function sendErrorResponse(err, res) {
         obj = new sendResponse.UnknownError(err.toString());
     }
     console.warn('Error response:', obj);
-    res.send(obj.code || 500, obj);
+    res.status(obj.code || 500).send(obj);
 }
 
 function sendResponse(res, promise, code) {
@@ -46,9 +46,9 @@ function sendResponse(res, promise, code) {
         if(result instanceof Error) {
             sendErrorResponse(result, res);
         } else if (result === void(0) || result === null) {
-            res.send(404, legacyErrorFormat && toLegacyFormat(NotFound) || NotFound);
+            res.status(404).send(legacyErrorFormat && toLegacyFormat(NotFound) || NotFound);
         } else {
-            res.send(code || 200, result);
+            res.status(code || 200).send(result);
         }
     }, function(err) {
         var ise;
@@ -64,7 +64,7 @@ function sendResponse(res, promise, code) {
             console.trace();
             console.error('sendresponse stack:', responseStack.stack);
             ise = new sendResponse.InternalServerError();
-            res.send(500, legacyErrorFormat && toLegacyFormat(ise) || ise);
+            res.status(500).send(legacyErrorFormat && toLegacyFormat(ise) || ise);
         }
     });
     if (out.done) { out.done(); }
