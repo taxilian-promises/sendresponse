@@ -25,5 +25,8 @@
   "dependencies": {
     "apperror": "^1.1.2",
     "q": "=1.4.1"
+  },
+  "peerDependencies": {
+    "express": ">= 3"
   }
 }
