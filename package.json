@@ -23,8 +23,8 @@
   },
   "homepage": "https://github.com/taxilian-promises/sendresponse",
   "dependencies": {
-    "apperror": "^1.1.2",
-    "q": "=1.4.1"
+    "apperror": "^1.3.0",
+    "q": ">= 1.5.1"
   },
   "peerDependencies": {
     "express": ">= 3"
