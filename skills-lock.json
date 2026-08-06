@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "accessible-technical-writing": {
+      "source": "hamstudy/documentation-skills",
+      "sourceType": "github",
+      "skillPath": "skills/accessible-technical-writing/SKILL.md",
+      "computedHash": "13b628cba5ee43938b94cb209fb30ef1c1d0547a4e6737b7b5ad0f38fdfb0454"
+    },
+    "documentation": {
+      "source": "hamstudy/documentation-skills",
+      "sourceType": "github",
+      "skillPath": "skills/documentation/SKILL.md",
+      "computedHash": "72842d603897930998639bfd6e9d002a4eeb1f45080ac885495a56c4e843dbe5"
+    },
+    "typescript-development": {
+      "source": "taxilian/typescript-development-skill",
+      "sourceType": "github",
+      "skillPath": "typescript-development/SKILL.md",
+      "computedHash": "d3063e18fbf828200774201d498f95b44c5b643b80c92a5c324ccca83a7b7e2d"
+    },
+    "unit-testing": {
+      "source": "hamstudy/unit-testing-skill",
+      "sourceType": "github",
+      "skillPath": "plugins/unit-testing/skills/unit-testing/SKILL.md",
+      "computedHash": "7da59aa21215a2f6fb18d80506cde91ecddbe27b911a9eff168438b7a2b244b7"
+    }
+  }
+}
