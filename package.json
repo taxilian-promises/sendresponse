@@ -1,12 +1,13 @@
 {
   "name": "sendresponse",
-  "version": "1.5.1",
+  "version": "2.0.1",
   "description": "Promise-capable library for simple and consistent management of sending responses from a REST server",
   "main": "dist/sendresponse.js",
   "types": "dist/sendresponse.d.ts",
   "scripts": {
-    "build": "tsc --declaration -p . ",
-    "prepublish": "tsc --declaration -p ."
+    "build": "tsc -p .",
+    "typecheck": "tsc -p . --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
@@ -19,19 +20,16 @@
     "sendresponse"
   ],
   "author": "Richard Bateman <taxilian@gmail.com>",
-  "license": "new BSD",
+  "license": "BSD-3-Clause",
   "bugs": {
     "url": "https://github.com/taxilian-promises/sendresponse/issues"
   },
   "homepage": "https://github.com/taxilian-promises/sendresponse",
-  "dependencies": {
-    "apperror": "^1.4.0"
-  },
   "devDependencies": {
-    "@types/node": "^14.14.37",
-    "typescript": "^4.2.4"
+    "@types/node": "^26.1.2",
+    "typescript": "^7.0.2"
   },
   "peerDependencies": {
-    "express": ">= 3"
+    "express": ">= 4"
   }
 }

@@ -1,31 +1,27 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "allowJs": true,
-    "baseUrl": ".",
-    "checkJs": false,
-    "emitDecoratorMetadata": true,
     "esModuleInterop": true,
-    "experimentalDecorators": true,
-    "inlineSourceMap": true,
-    "module": "commonjs",
-    "noImplicitAny": true,
+    "module": "nodenext",
+    "target": "es2022",
+    "lib": ["es2022"],
+    "rootDir": "src",
     "outDir": "dist",
-    "preserveConstEnums": true,
-    "strictNullChecks": true,
-    "lib": [
-      "es2020"
-    ],
-    "removeComments": false,
-    "target": "es3",
-    "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    }
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "types": ["node"],
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
   },
   "exclude": [
-    "dist"
+    "dist",
+    "node_modules"
   ],
   "include": [
     "src/**/*"

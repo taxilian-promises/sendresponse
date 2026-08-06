@@ -1,72 +1,109 @@
-import AppError from 'apperror';
+import AppError from './apperror.js';
+import type { CustomErrorConstructor } from './apperror.js';
 
-interface Send {
-  (status: number, body?: any): any;
-  (body: any): any;
+export interface Send {
+  (status: number, body?: unknown): unknown;
+  (body: unknown): unknown;
 }
-interface HTTPResponseLike {
-  json: Send;
+
+export interface HTTPResponseLike {
+  json?: Send;
   send: Send;
-  sendResponse: (promise: any, code?: number) => void;
+  sendResponse?: <T>(promise: PromiseLike<T> | T, code?: number) => void;
   status(code: number): HTTPResponseLike;
 }
-interface TranslatorFunction {
-  (err: Error): any;
-}
-type Promisify<T = any> = (val: PromiseLike<T> | T) => Promise<T>;
 
-let Promisify: Promisify = async (value: any) => value;
+export interface TranslatorFunction {
+  (err: Error): AppError | null | undefined;
+}
+
+export interface PromiseWithOptionalDone<T> extends PromiseLike<T> {
+  done?: () => void;
+}
+
+export interface PromiseFactory {
+  <T>(value: PromiseLike<T> | T): PromiseWithOptionalDone<Awaited<T>>;
+}
+
+interface ResponseObject {
+  code?: number;
+}
+
+interface ResponseObjectError {
+  toResponseObject(): ResponseObject;
+}
+
+let promiseFactory: PromiseFactory = (value) => Promise.resolve(value);
 let verboseConsoleErrors = false;
 let legacyErrorFormat = false;
-let errorTranslators: TranslatorFunction[] = [];
-export function sendResponse(res: HTTPResponseLike, promise: any, code?: number) {
+const errorTranslators: TranslatorFunction[] = [];
+
+export function sendResponse<T>(res: HTTPResponseLike, promise: PromiseLike<T> | T, code?: number) {
   if (!res.json) {
     throw new Error('First parameter must be the response object!');
   }
   const responseStack = new Error();
-  const out = Promisify(promise).then(function(result) {
-    if(result instanceof Error) {
+  const out = promiseFactory(promise).then(
+    (result) => {
+      if (result instanceof Error) {
       sendErrorResponse(result, res);
-    } else if (result === void(0) || result === null) {
-      res.status(404).send(legacyErrorFormat && toLegacyFormat(NotFound) || NotFound);
-    } else {
-      res.status(code || 200).send(result);
-    }
-  }, function(err: AppError) {
-    let ise;
-    if(err instanceof Error) {
-      sendErrorResponse(err, res);
-      if (verboseConsoleErrors && !(err instanceof AppError && !err.captureStack)) {
-        console.error('sendResponse called with error:', err, err.stack);
-        console.trace();
-        console.error('sendresponse stack:', responseStack.stack);
+      } else if (result === undefined || result === null) {
+        res.status(404).send(legacyErrorFormat ? toLegacyFormat(NotFound) : NotFound);
+      } else {
+        res.status(code || 200).send(result);
       }
-    } else {
+    },
+    (err: unknown) => {
+      if (err instanceof Error) {
+        sendErrorResponse(err, res);
+        if (verboseConsoleErrors && !(err instanceof AppError && !err.captureStack)) {
+          console.error('sendResponse called with error:', err, err.stack);
+          console.trace();
+          console.error('sendresponse stack:', responseStack.stack);
+        }
+        return;
+      }
+
       console.error('Internal Server Error -- Promise reject with:', err);
       console.trace();
       console.error('sendresponse stack:', responseStack.stack);
-      ise = new InternalServerError();
-      res.status(500).send(legacyErrorFormat && toLegacyFormat(ise) || ise);
-    }
-  });
-  if ((out as any).done) { (out as any).done(); }
+      const internalServerError = new InternalServerError();
+      res.status(500).send(legacyErrorFormat ? toLegacyFormat(internalServerError) : internalServerError);
+    },
+  );
+  invokeDoneIfPresent(out);
 }
-export function middleware(req: any, res: HTTPResponseLike, next: Function) {
-  res.sendResponse = (promise: any, code?: number) => sendResponse(res, promise, code);
+
+function invokeDoneIfPresent(out: PromiseWithOptionalDone<unknown>) {
+  if (typeof out.done === 'function') {
+    out.done();
+  }
+}
+
+export function middleware(_req: unknown, res: HTTPResponseLike, next: () => void) {
+  res.sendResponse = (promise, code) => sendResponse(res, promise, code);
   next();
-};
+}
+
 export function registerTranslator(fn: TranslatorFunction) {
   errorTranslators.push(fn);
-};
-export function setVerboseLogs() { verboseConsoleErrors = true; };
-export function setLegacyErrorFormat() { legacyErrorFormat = true; };
-export function setPromiseFactory(fn: Promisify) {
+}
+
+export function setVerboseLogs() {
+  verboseConsoleErrors = true;
+}
+
+export function setLegacyErrorFormat() {
+  legacyErrorFormat = true;
+}
+
+export function setPromiseFactory(fn: PromiseFactory) {
   // This should be a function which accepts a value which may or may not be
   // a Promises/A+ object and returns a Promises/A+ object.  If the return object
   // has a done() method that will be invoked with no parameters at the end; Q and Bluebird
   // both support this as a way to ensure that there are no swallowed uncaught exceptions
-  Promisify = fn;
-};
+  promiseFactory = fn;
+}
 
 // ForbiddenError and UnauthenticatedError are used to distinguish between
 // 403's as a result of being not authorized vs. not authenticated
@@ -94,46 +131,84 @@ export const NotFound = new (AppError.createCustom(
 ))();
 export const createCustomError = AppError.createCustom;
 
-
 function toLegacyFormat(err: AppError) {
   const obj = err.toJSON();
-  const data = [obj.message];
-  if (obj.data) { data.push(obj.data); }
+  const data: unknown[] = [obj.message];
+  if (obj.data) {
+    data.push(obj.data);
+  }
   return {
     type: obj.type,
     data: data,
     code: obj.code,
   };
 }
-let foo: Error;
-function sendErrorResponse(err: AppError | Error | {toResponseObject: () => any; stack?: string}, res: HTTPResponseLike) {
-  let obj;
-  if (err instanceof AppError) {
-    err.log();
-    return res.status(err.code || 500).send(legacyErrorFormat && toLegacyFormat(err) || err);
-  } else if ('toResponseObject' in err) {
-    obj = err.toResponseObject();
-  } else {
-    try {
-      for (let i = 0; i < errorTranslators.length; ++i) {
-        obj = errorTranslators[i](err);
-        if (obj) { break; }
-      }
-    } catch(err2) {
-      console.warn('Error trying to handle error with error translator:', err2, err2.stack);
-    }
+
+function isResponseObjectError(error: unknown): error is ResponseObjectError {
+  if (typeof error !== 'object' || error === null || !('toResponseObject' in error)) {
+    return false;
   }
-  if (!obj) {
-    if (verboseConsoleErrors) {
-      console.error('Unknown error!', err, err.stack);
-    }
-    obj = new UnknownError(err.toString());
-  }
-  console.warn('Error response:', obj);
-  res.status(obj.code || 500).send(obj);
+  return typeof error.toResponseObject === 'function';
 }
 
-export default Object.assign(
+function sendErrorResponse(err: Error | ResponseObjectError, res: HTTPResponseLike) {
+  let responseObject: AppError | ResponseObject | undefined;
+  if (err instanceof AppError) {
+    err.log();
+    res.status(err.code || 500).send(legacyErrorFormat ? toLegacyFormat(err) : err);
+    return;
+  }
+  if (isResponseObjectError(err)) {
+    responseObject = err.toResponseObject();
+  } else {
+    try {
+      for (const translator of errorTranslators) {
+        const translatedError = translator(err);
+        if (translatedError) {
+          responseObject = translatedError;
+          break;
+        }
+      }
+    } catch (translationError: unknown) {
+      console.warn(
+        'Error trying to handle error with error translator:',
+        translationError,
+        getErrorStack(translationError),
+      );
+    }
+  }
+  if (!responseObject) {
+    if (verboseConsoleErrors) {
+      console.error('Unknown error!', err, getErrorStack(err));
+    }
+    responseObject = new UnknownError(err.toString());
+  }
+  console.warn('Error response:', responseObject);
+  res.status(responseObject.code || 500).send(responseObject);
+}
+
+function getErrorStack(error: unknown) {
+  return error instanceof Error ? error.stack : undefined;
+}
+
+export interface SendResponseExport {
+  <T>(res: HTTPResponseLike, promise: PromiseLike<T> | T, code?: number): void;
+  createCustomError: typeof createCustomError;
+  ForbiddenError: CustomErrorConstructor;
+  InternalServerError: CustomErrorConstructor;
+  InvalidRequestError: CustomErrorConstructor;
+  middleware: typeof middleware;
+  NotFound: AppError;
+  registerTranslator: typeof registerTranslator;
+  setLegacyErrorFormat: typeof setLegacyErrorFormat;
+  setPromiseFactory: typeof setPromiseFactory;
+  setVerboseLogs: typeof setVerboseLogs;
+  UnauthenticatedError: CustomErrorConstructor;
+  UnknownError: CustomErrorConstructor;
+  ValidationError: CustomErrorConstructor;
+}
+
+const sendResponseWithHelpers: SendResponseExport = Object.assign(
   sendResponse,
   {
     createCustomError,
@@ -149,5 +224,7 @@ export default Object.assign(
     UnauthenticatedError,
     UnknownError,
     ValidationError,
-  }
-)
+  },
+);
+
+export default sendResponseWithHelpers;
