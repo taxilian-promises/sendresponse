@@ -4,10 +4,15 @@
   "description": "Promise-capable library for simple and consistent management of sending responses from a REST server",
   "main": "dist/sendresponse.js",
   "types": "dist/sendresponse.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p .",
     "typecheck": "tsc -p . --noEmit",
-    "prepublishOnly": "npm run build"
+    "pretest": "npm run build",
+    "test": "node --test test/*.test.js && tsc -p test/fixtures/tsconfig.json",
+    "prepublishOnly": "npm test"
   },
   "repository": {
     "type": "git",

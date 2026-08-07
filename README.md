@@ -54,8 +54,9 @@ Errors serialize as JSON:
 { "type": "ValidationError", "message": "Email is required", "data": "", "code": 400 }
 ```
 
-Every `AppError` sent as a response is also logged once to the console (body plus stack).
-Pass `logError: false` when creating an error to suppress this.
+An `AppError` rejected (or resolved) directly is logged once to the console when sent
+(body plus stack). Pass `logError: false` when creating an error to suppress this. Errors
+produced by translators follow the translator rules above instead.
 
 ## Built-in errors
 
@@ -109,6 +110,7 @@ throw new PaymentRequiredError({ message: 'Card declined', data: { reason: 'frau
 The constructor accepts a message string, or an options object with `message` (or `msg`),
 `code` (or `status`/`statusCode`), `data`, `captureStack`, and `logError`. Defaults passed
 to `createCustomError` apply to every instance; constructor arguments override them.
+Put any extra payload in `data` — it's included in the serialized response.
 
 ## Custom translators
 
@@ -127,9 +129,13 @@ registerTranslator((err) => {
 });
 ```
 
-Translators run in registration order; the first one to return an error wins. If none
-match, sendresponse sends a 500 `UnknownError`. If a translator throws, sendresponse logs
-the failure and skips the remaining translators.
+Translators run in registration order; the first one to return a truthy value wins. Return
+anything falsy (`null`, `undefined`, `false`) to pass to the next translator. A translator
+result is sent as-is: a numeric `code` property becomes the HTTP status (default 500), and
+the value itself becomes the response body — results are not legacy-converted by
+`setLegacyErrorFormat()` and are not logged by `setVerboseLogs()`. If no translator matches,
+sendresponse sends a 500 `UnknownError`. If a translator throws, sendresponse logs the
+failure and skips the remaining translators.
 
 ## Configuration
 
@@ -137,7 +143,6 @@ the failure and skips the remaining translators.
 |---|---|
 | `setVerboseLogs()` | Log every error (with stacks) to the console |
 | `setLegacyErrorFormat()` | Send errors as `{ type, data: [message, data?], code }` instead of the default shape |
-| `setPromiseFactory(fn)` | Wrap promises with Q/Bluebird/etc. If the returned promise has a `done()` method, sendresponse calls it to surface swallowed rejections |
 
 Call these once at startup, before mounting routes.
 
@@ -158,7 +163,6 @@ once through a small helper in your app.
 | `registerTranslator(fn)` | function | Add an error translator |
 | `setVerboseLogs()` | function | Enable console error logging |
 | `setLegacyErrorFormat()` | function | Use the legacy error body shape |
-| `setPromiseFactory(fn)` | function | Custom promise wrapper (Q, Bluebird) |
 | `createCustomError(name, defaults)` | function | Create a custom `AppError` subclass |
 | `AppError` | class (via `sendresponse/dist/apperror.js`) | Base error class |
 | Error classes above | class / instance | Built-in HTTP errors |

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "module": "nodenext",
+    "target": "es2022",
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "types": ["node"],
+    "skipLibCheck": false,
+    "noEmit": true,
+    "paths": {
+      "sendresponse": ["../../dist/sendresponse.d.ts"]
+    }
+  },
+  "files": ["translator-fixture.ts"]
+}

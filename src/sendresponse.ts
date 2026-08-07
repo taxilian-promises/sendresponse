@@ -13,27 +13,24 @@ export interface HTTPResponseLike {
   status(code: number): HTTPResponseLike;
 }
 
+export interface ErrorResponseBody {
+  code?: number | undefined;
+}
+
 export interface TranslatorFunction {
-  (err: Error): AppError | null | undefined;
-}
-
-export interface PromiseWithOptionalDone<T> extends PromiseLike<T> {
-  done?: () => void;
-}
-
-export interface PromiseFactory {
-  <T>(value: PromiseLike<T> | T): PromiseWithOptionalDone<Awaited<T>>;
-}
-
-interface ResponseObject {
-  code?: number;
+  /**
+   * Return any truthy value to use it as the response body (a numeric `code`
+   * property becomes the HTTP status; anything else falls back to 500).
+   * Return a falsy value (`null`, `undefined`, `false`, `0`, `''`) to pass
+   * the error to the next translator.
+   */
+  (err: Error): unknown;
 }
 
 interface ResponseObjectError {
-  toResponseObject(): ResponseObject;
+  toResponseObject(): ErrorResponseBody;
 }
 
-let promiseFactory: PromiseFactory = (value) => Promise.resolve(value);
 let verboseConsoleErrors = false;
 let legacyErrorFormat = false;
 const errorTranslators: TranslatorFunction[] = [];
@@ -43,10 +40,10 @@ export function sendResponse<T>(res: HTTPResponseLike, promise: PromiseLike<T> |
     throw new Error('First parameter must be the response object!');
   }
   const responseStack = new Error();
-  const out = promiseFactory(promise).then(
+  void Promise.resolve(promise).then(
     (result) => {
       if (result instanceof Error) {
-      sendErrorResponse(result, res);
+        sendErrorResponse(result, res);
       } else if (result === undefined || result === null) {
         res.status(404).send(legacyErrorFormat ? toLegacyFormat(NotFound) : NotFound);
       } else {
@@ -71,13 +68,6 @@ export function sendResponse<T>(res: HTTPResponseLike, promise: PromiseLike<T> |
       res.status(500).send(legacyErrorFormat ? toLegacyFormat(internalServerError) : internalServerError);
     },
   );
-  invokeDoneIfPresent(out);
-}
-
-function invokeDoneIfPresent(out: PromiseWithOptionalDone<unknown>) {
-  if (typeof out.done === 'function') {
-    out.done();
-  }
 }
 
 export function middleware(_req: unknown, res: HTTPResponseLike, next: () => void) {
@@ -95,14 +85,6 @@ export function setVerboseLogs() {
 
 export function setLegacyErrorFormat() {
   legacyErrorFormat = true;
-}
-
-export function setPromiseFactory(fn: PromiseFactory) {
-  // This should be a function which accepts a value which may or may not be
-  // a Promises/A+ object and returns a Promises/A+ object.  If the return object
-  // has a done() method that will be invoked with no parameters at the end; Q and Bluebird
-  // both support this as a way to ensure that there are no swallowed uncaught exceptions
-  promiseFactory = fn;
 }
 
 // ForbiddenError and UnauthenticatedError are used to distinguish between
@@ -151,8 +133,17 @@ function isResponseObjectError(error: unknown): error is ResponseObjectError {
   return typeof error.toResponseObject === 'function';
 }
 
+function responseCodeOf(value: unknown) {
+  return typeof value === 'object' &&
+    value !== null &&
+    'code' in value &&
+    typeof value.code === 'number'
+    ? value.code
+    : undefined;
+}
+
 function sendErrorResponse(err: Error | ResponseObjectError, res: HTTPResponseLike) {
-  let responseObject: AppError | ResponseObject | undefined;
+  let responseObject: unknown = undefined;
   if (err instanceof AppError) {
     err.log();
     res.status(err.code || 500).send(legacyErrorFormat ? toLegacyFormat(err) : err);
@@ -184,7 +175,7 @@ function sendErrorResponse(err: Error | ResponseObjectError, res: HTTPResponseLi
     responseObject = new UnknownError(err.toString());
   }
   console.warn('Error response:', responseObject);
-  res.status(responseObject.code || 500).send(responseObject);
+  res.status(responseCodeOf(responseObject) || 500).send(responseObject);
 }
 
 function getErrorStack(error: unknown) {
@@ -201,7 +192,6 @@ export interface SendResponseExport {
   NotFound: AppError;
   registerTranslator: typeof registerTranslator;
   setLegacyErrorFormat: typeof setLegacyErrorFormat;
-  setPromiseFactory: typeof setPromiseFactory;
   setVerboseLogs: typeof setVerboseLogs;
   UnauthenticatedError: CustomErrorConstructor;
   UnknownError: CustomErrorConstructor;
@@ -219,7 +209,6 @@ const sendResponseWithHelpers: SendResponseExport = Object.assign(
     NotFound,
     registerTranslator,
     setLegacyErrorFormat,
-    setPromiseFactory,
     setVerboseLogs,
     UnauthenticatedError,
     UnknownError,
